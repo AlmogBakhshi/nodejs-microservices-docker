@@ -1,0 +1,69 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka:2.11-1.1.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    links:
+      - zookeeper
+    restart: always
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME=kafka
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  db:
+    image: mongo:latest
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+  mq:
+    build: './mq'
+    container_name: mq
+    ports:
+      - "5001:5000"
+    depends_on: 
+      - zookeeper
+      - kafka
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=kafka:9092
+  data_processor:
+    build: './data_processor'
+    container_name: data_processor
+    ports:
+      - "5002:5000"
+    depends_on: 
+      - db
+    environment:
+      - MONGO_DB_URI=mongodb://db:27017/currency-exchange
+  alerts_monitor:
+    build: './alerts_monitor'
+    container_name: alerts_monitor
+    ports:
+      - "5003:5000"
+    depends_on: 
+      - zookeeper
+      - kafka
+      - db
+      - mq
+    environment:
+      - MONGO_DB_URI=mongodb://db:27017/currency-exchange
+      - KAFKA_ZOOKEEPER_CONNECT=kafka:9092
+  alerts_handler:
+    build: './alerts_handler'
+    container_name: alerts_handler
+    ports:
+      - "5004:5000"
+    depends_on: 
+      - zookeeper
+      - kafka
+      - mq
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=kafka:9092

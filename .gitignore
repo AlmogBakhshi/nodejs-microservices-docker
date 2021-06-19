@@ -1,0 +1,5 @@
+node_modules
+alerts_handler/node_modules
+alerts_monitor/node_modules
+data_processor/node_modules
+mq/node_modules
